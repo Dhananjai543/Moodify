@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Moodify - Voice-to-Playlist Generator Backend
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.12
+
+Resources:
+  MoodifyApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: dev
+      CorsConfiguration:
+        AllowOrigins:
+          - http://localhost:5173
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  HelloFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/hello.handler
+      CodeUri: .
+      Description: Health check endpoint
+      Events:
+        HelloApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref MoodifyApi
+            Path: /hello
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${MoodifyApi}.execute-api.${AWS::Region}.amazonaws.com/dev"
