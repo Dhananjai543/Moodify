@@ -12,8 +12,8 @@ dist/
 __pycache__/
 *.pyc
 *.pyo
-.venv/
-venv/
+#.venv/
+#venv/
 
 # AWS SAM
 .aws-sam/
