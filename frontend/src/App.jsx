@@ -1,9 +1,24 @@
+import { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Login from './pages/Login';
+import Callback from './pages/Callback';
+import UserProfile from './components/UserProfile';
+
 function App() {
+  const [user, setUser] = useState(null);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
-      <h1 className="text-4xl font-bold">Moodify</h1>
-    </div>
-  )
+    <Routes>
+      <Route
+        path="/"
+        element={user ? <UserProfile user={user} onLogout={() => setUser(null)} /> : <Login />}
+      />
+      <Route
+        path="/callback"
+        element={<Callback onLoginSuccess={setUser} />}
+      />
+    </Routes>
+  );
 }
 
-export default App
+export default App;
