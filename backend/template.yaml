@@ -7,6 +7,10 @@ Globals:
     Timeout: 30
     MemorySize: 256
     Runtime: python3.12
+    Environment:
+      Variables:
+        SPOTIFY_CLIENT_ID: ""
+        SPOTIFY_REDIRECT_URI: "http://127.0.0.1:5173/callback"
 
 Resources:
   MoodifyApi:
@@ -37,6 +41,34 @@ Resources:
             ApiId: !Ref MoodifyApi
             Path: /hello
             Method: GET
+
+  TokenExchangeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/auth.token_handler
+      CodeUri: .
+      Description: Exchange auth code for Spotify tokens
+      Events:
+        TokenApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref MoodifyApi
+            Path: /auth/token
+            Method: POST
+
+  TokenRefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/auth.refresh_handler
+      CodeUri: .
+      Description: Refresh Spotify access token
+      Events:
+        RefreshApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref MoodifyApi
+            Path: /auth/refresh
+            Method: POST
 
 Outputs:
   ApiUrl:

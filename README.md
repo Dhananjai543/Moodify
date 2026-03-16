@@ -45,6 +45,7 @@ Requires [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/
 
 ```bash
 cd backend
+pip install -r requirements.txt
 sam build
 sam local start-api
 ```
