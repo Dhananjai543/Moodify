@@ -38,7 +38,8 @@ export async function exchangeToken(code, codeVerifier) {
   });
 
   if (!response.ok) {
-    throw new Error('Token exchange failed');
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error_description || err.error || 'Token exchange failed');
   }
 
   return response.json();
@@ -70,7 +71,8 @@ export async function fetchUserProfile(accessToken) {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch user profile');
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Failed to fetch user profile');
   }
 
   return response.json();
