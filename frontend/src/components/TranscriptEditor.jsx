@@ -1,10 +1,12 @@
-export default function TranscriptEditor({ transcript, onTranscriptChange, onReRecord }) {
+export default function TranscriptEditor({ transcript, onTranscriptChange, onReRecord, isTypingMode }) {
   const wordCount = transcript.trim() ? transcript.trim().split(/\s+/).length : 0;
   const charCount = transcript.length;
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-lg px-4">
-      <h2 className="text-lg font-semibold text-white">Your Transcript</h2>
+      <h2 className="text-lg font-semibold text-white">
+        {isTypingMode ? 'Type your mood' : 'Your Transcript'}
+      </h2>
 
       <textarea
         value={transcript}
@@ -27,7 +29,7 @@ export default function TranscriptEditor({ transcript, onTranscriptChange, onReR
             <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4Z" />
             <path d="M6 11a1 1 0 0 0-2 0 8 8 0 0 0 7 7.93V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.07A8 8 0 0 0 20 11a1 1 0 1 0-2 0 6 6 0 0 1-12 0Z" />
           </svg>
-          Re-record
+          {isTypingMode ? 'Use mic instead' : 'Re-record'}
         </button>
 
         <button

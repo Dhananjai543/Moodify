@@ -4,7 +4,7 @@ import useSpeechRecognition from '../hooks/useSpeechRecognition';
 const MAX_DURATION = 30;
 const BAR_COUNT = 24;
 
-export default function MicButton({ onRecordingComplete }) {
+export default function MicButton({ onRecordingComplete, onTypeInstead }) {
   const [status, setStatus] = useState('idle');
   const [elapsed, setElapsed] = useState(0);
   const [bars, setBars] = useState(() => new Array(BAR_COUNT).fill(4));
@@ -121,6 +121,15 @@ export default function MicButton({ onRecordingComplete }) {
         </div>
         <p className="text-red-400 font-medium">Speech recognition not supported</p>
         <p className="text-gray-400 text-sm">Your browser doesn't support speech recognition. Try Chrome or Edge.</p>
+        <button
+          onClick={onTypeInstead}
+          className="mt-2 flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+            <path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Zm5 1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2H7Zm4 0a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2h-1Zm4 0a1 1 0 0 0 0 2h2a1 1 0 1 0 0-2h-2ZM7 11a1 1 0 1 0 0 2h10a1 1 0 1 0 0-2H7Zm-3 5a1 1 0 1 0 0 2h1a1 1 0 1 0 0-2H4Zm14 0a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2h-2Z" />
+          </svg>
+          Type instead
+        </button>
       </div>
     );
   }
@@ -193,7 +202,18 @@ export default function MicButton({ onRecordingComplete }) {
           </button>
         </>
       ) : (
-        <p className="text-sm text-gray-500">Tap the mic to start recording</p>
+        <>
+          <p className="text-sm text-gray-500">Tap the mic to start recording</p>
+          <button
+            onClick={onTypeInstead}
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-green-400 transition-colors cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+              <path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Zm5 1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2H7Zm4 0a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2h-1Zm4 0a1 1 0 0 0 0 2h2a1 1 0 1 0 0-2h-2ZM7 11a1 1 0 1 0 0 2h10a1 1 0 1 0 0-2H7Zm-3 5a1 1 0 1 0 0 2h1a1 1 0 1 0 0-2H4Zm14 0a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2h-2Z" />
+            </svg>
+            Type instead
+          </button>
+        </>
       )}
     </div>
   );
