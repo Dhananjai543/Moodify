@@ -36,6 +36,7 @@ export default function Callback({ onLoginSuccess }) {
 
       try {
         const tokenData = await exchangeToken(code, verifier);
+        console.log('Token response:', { scope: tokenData.scope, token_type: tokenData.token_type, has_access_token: !!tokenData.access_token });
         clearCodeVerifier();
         setTokens(tokenData);
 
@@ -43,6 +44,7 @@ export default function Callback({ onLoginSuccess }) {
         onLoginSuccess(profile);
         navigate('/', { replace: true });
       } catch (err) {
+        console.error('Callback error:', err);
         setError(err.message);
       }
     };
