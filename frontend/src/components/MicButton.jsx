@@ -15,6 +15,7 @@ export default function MicButton({ onRecordingComplete }) {
   const rafRef = useRef(null);
   const timerRef = useRef(null);
   const elapsedRef = useRef(0);
+  const finalTranscriptRef = useRef('');
 
   const {
     isSupported,
@@ -24,6 +25,10 @@ export default function MicButton({ onRecordingComplete }) {
     stop: stopRecognition,
     reset: resetRecognition,
   } = useSpeechRecognition();
+
+  useEffect(() => {
+    finalTranscriptRef.current = finalTranscript;
+  }, [finalTranscript]);
 
   const cleanup = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -99,9 +104,9 @@ export default function MicButton({ onRecordingComplete }) {
     setTimeout(() => {
       setStatus('idle');
       setElapsed(0);
-      onRecordingComplete?.(finalTranscript);
+      onRecordingComplete?.(finalTranscriptRef.current);
     }, 1500);
-  }, [cleanup, stopRecognition, onRecordingComplete, finalTranscript]);
+  }, [cleanup, stopRecognition, onRecordingComplete]);
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 

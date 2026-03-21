@@ -71,9 +71,10 @@ export async function fetchUserProfile(accessToken) {
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    const msg = err.error?.message || `Failed to fetch user profile (${response.status})`;
-    throw new Error(msg);
+    const text = await response.text();
+    console.error('Spotify /v1/me raw response:', response.status, text);
+    const err = JSON.parse(text).error || {};
+    throw new Error(err.message || `Failed to fetch user profile (${response.status})`);
   }
 
   return response.json();

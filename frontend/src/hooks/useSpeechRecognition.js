@@ -36,8 +36,11 @@ export default function useSpeechRecognition() {
 
     recognition.onerror = (event) => {
       if (event.error === 'aborted') return;
-      console.error('SpeechRecognition error:', event.error);
+      console.error('SpeechRecognition error:', event.error, event.message);
     };
+
+    recognition.onaudiostart = () => console.log('Speech: audio capture started');
+    recognition.onspeechstart = () => console.log('Speech: speech detected');
 
     recognition.onend = () => {
       recognitionRef.current = null;
