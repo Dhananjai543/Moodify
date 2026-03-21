@@ -72,7 +72,8 @@ export async function fetchUserProfile(accessToken) {
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Failed to fetch user profile');
+    const msg = err.error?.message || `Failed to fetch user profile (${response.status})`;
+    throw new Error(msg);
   }
 
   return response.json();
