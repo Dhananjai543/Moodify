@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { retrieveCodeVerifier, clearCodeVerifier } from '../auth/pkce';
 import { exchangeToken, fetchUserProfile } from '../services/spotify';
@@ -7,9 +7,11 @@ import { setTokens } from '../auth/tokenStore';
 export default function Callback({ onLoginSuccess }) {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const hasRun = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (hasRun.current) return;
+    hasRun.current = true;
 
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -17,39 +19,35 @@ export default function Callback({ onLoginSuccess }) {
       const authError = params.get('error');
 
       if (authError) {
-        if (!cancelled) setError(`Authorization denied: ${authError}`);
+        setError(`Authorization denied: ${authError}`);
         return;
       }
 
       if (!code) {
-        if (!cancelled) setError('No authorization code found');
+        setError('No authorization code found');
         return;
       }
 
       const verifier = retrieveCodeVerifier();
       if (!verifier) {
-        if (!cancelled) setError('Missing code verifier — please try logging in again');
+        setError('Missing code verifier — please try logging in again');
         return;
       }
 
       try {
         const tokenData = await exchangeToken(code, verifier);
-        if (cancelled) return;
         clearCodeVerifier();
         setTokens(tokenData);
 
         const profile = await fetchUserProfile(tokenData.access_token);
-        if (cancelled) return;
         onLoginSuccess(profile);
         navigate('/', { replace: true });
       } catch (err) {
-        if (!cancelled) setError(err.message);
+        setError(err.message);
       }
     };
 
     handleCallback();
-
-    return () => { cancelled = true; };
   }, [navigate, onLoginSuccess]);
 
   if (error) {
