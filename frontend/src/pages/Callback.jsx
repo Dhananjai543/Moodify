@@ -9,41 +9,47 @@ export default function Callback({ onLoginSuccess }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelled = false;
+
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       const authError = params.get('error');
 
       if (authError) {
-        setError(`Authorization denied: ${authError}`);
+        if (!cancelled) setError(`Authorization denied: ${authError}`);
         return;
       }
 
       if (!code) {
-        setError('No authorization code found');
+        if (!cancelled) setError('No authorization code found');
         return;
       }
 
       const verifier = retrieveCodeVerifier();
       if (!verifier) {
-        setError('Missing code verifier — please try logging in again');
+        if (!cancelled) setError('Missing code verifier — please try logging in again');
         return;
       }
 
       try {
         const tokenData = await exchangeToken(code, verifier);
+        if (cancelled) return;
         clearCodeVerifier();
         setTokens(tokenData);
 
         const profile = await fetchUserProfile(tokenData.access_token);
+        if (cancelled) return;
         onLoginSuccess(profile);
         navigate('/', { replace: true });
       } catch (err) {
-        setError(err.message);
+        if (!cancelled) setError(err.message);
       }
     };
 
     handleCallback();
+
+    return () => { cancelled = true; };
   }, [navigate, onLoginSuccess]);
 
   if (error) {
