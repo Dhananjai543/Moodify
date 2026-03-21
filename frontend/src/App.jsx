@@ -7,6 +7,7 @@ import MicButton from './components/MicButton';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [transcript, setTranscript] = useState('');
 
   return (
     <Routes>
@@ -17,7 +18,7 @@ function App() {
             <div className="min-h-screen bg-gray-950 text-white flex flex-col">
               <UserProfile user={user} onLogout={() => setUser(null)} />
               <main className="flex-1 flex items-center justify-center">
-                <MicButton />
+                <MicButton onRecordingComplete={setTranscript} />
               </main>
             </div>
           ) : (

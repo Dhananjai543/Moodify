@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import useSpeechRecognition from '../hooks/useSpeechRecognition';
 
 const MAX_DURATION = 30;
 const BAR_COUNT = 24;
@@ -14,6 +15,15 @@ export default function MicButton({ onRecordingComplete }) {
   const rafRef = useRef(null);
   const timerRef = useRef(null);
   const elapsedRef = useRef(0);
+
+  const {
+    isSupported,
+    finalTranscript,
+    interimTranscript,
+    start: startRecognition,
+    stop: stopRecognition,
+    reset: resetRecognition,
+  } = useSpeechRecognition();
 
   const cleanup = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -63,10 +73,12 @@ export default function MicButton({ onRecordingComplete }) {
       source.connect(analyser);
       analyserRef.current = analyser;
 
+      resetRecognition();
       elapsedRef.current = 0;
       setElapsed(0);
       setStatus('recording');
       visualize();
+      startRecognition();
 
       timerRef.current = setInterval(() => {
         elapsedRef.current += 1;
@@ -79,19 +91,34 @@ export default function MicButton({ onRecordingComplete }) {
   };
 
   const stopRecording = useCallback(() => {
-    const duration = elapsedRef.current;
     cleanup();
+    stopRecognition();
     setBars(new Array(BAR_COUNT).fill(4));
     setStatus('processing');
 
     setTimeout(() => {
       setStatus('idle');
       setElapsed(0);
-      onRecordingComplete?.(duration);
+      onRecordingComplete?.(finalTranscript);
     }, 1500);
-  }, [cleanup, onRecordingComplete]);
+  }, [cleanup, stopRecognition, onRecordingComplete, finalTranscript]);
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  if (!isSupported) {
+    return (
+      <div className="flex flex-col items-center gap-4 max-w-md text-center">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-red-400">
+            <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4Z" />
+            <path d="M6 11a1 1 0 0 0-2 0 8 8 0 0 0 7 7.93V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.07A8 8 0 0 0 20 11a1 1 0 1 0-2 0 6 6 0 0 1-12 0Z" />
+          </svg>
+        </div>
+        <p className="text-red-400 font-medium">Speech recognition not supported</p>
+        <p className="text-gray-400 text-sm">Your browser doesn't support speech recognition. Try Chrome or Edge.</p>
+      </div>
+    );
+  }
 
   if (status === 'processing') {
     return (
@@ -140,6 +167,16 @@ export default function MicButton({ onRecordingComplete }) {
           <p className="text-sm text-gray-400 tabular-nums">
             {formatTime(elapsed)} / {formatTime(MAX_DURATION)}
           </p>
+
+          {(finalTranscript || interimTranscript) && (
+            <div className="max-w-md w-full px-4 text-center">
+              <p className="text-sm leading-relaxed">
+                <span className="text-white">{finalTranscript}</span>
+                <span className="text-gray-500 italic">{interimTranscript}</span>
+              </p>
+            </div>
+          )}
+
           <button
             onClick={stopRecording}
             className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 border border-red-400/50 hover:border-red-300 py-2 px-5 rounded-full transition-colors cursor-pointer"
