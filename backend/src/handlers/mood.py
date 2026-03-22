@@ -10,7 +10,7 @@ BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION", "ap-south-1")
 
 MAX_INPUT_CHARS = 500
 
-SYSTEM_PROMPT = """You are a music mood analyst. Your job is to analyze the emotional content of user text and map it to music attributes.
+SYSTEM_PROMPT = """You are a music mood analyst. Your job is to analyze the emotional content of user text, map it to music attributes, and recommend real songs that match the mood.
 
 Given a user's message, you must:
 1. Identify the primary mood and an optional secondary mood from the text.
@@ -21,10 +21,14 @@ Given a user's message, you must:
    - tempo_range: an object with "min" and "max" BPM (integers)
    - genres: a list of 2–4 relevant music genre strings
    - keywords: a list of 3–6 descriptive mood keyword strings
+4. Suggest 20–25 real songs that match the mood. Each song must:
+   - Be a real, well-known song that exists on Spotify
+   - Include the song title, artist name, and a brief reason (1 sentence) for why it fits the mood
+   - Be diverse across genres, eras, and artists — do not repeat artists more than twice
 
 Rules:
 - For vague or ambiguous input, use your best judgment and return reasonable defaults.
-- For truly nonsensical input (random characters, gibberish), return a neutral/default mood.
+- For truly nonsensical input (random characters, gibberish), return a neutral/default mood with general feel-good songs.
 - NEVER explain your reasoning. NEVER use markdown code fences.
 - Respond ONLY with a single valid JSON object matching this exact schema:
 
@@ -43,7 +47,10 @@ Rules:
     "time_of_day": "string or null",
     "activity": "string or null",
     "memories": "string or null"
-  }
+  },
+  "songs": [
+    { "title": "string", "artist": "string", "reason": "string" }
+  ]
 }"""
 
 bedrock_client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
@@ -112,7 +119,7 @@ def analyze_mood_handler(event, context):
 
     payload = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 1024,
+        "max_tokens": 4096,
         "system": SYSTEM_PROMPT,
         "messages": [
             {
