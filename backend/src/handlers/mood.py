@@ -10,44 +10,35 @@ BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION", "ap-south-1")
 
 MAX_INPUT_CHARS = 500
 
-SYSTEM_PROMPT = """You are a music mood analyst. Your job is to analyze the emotional content of user text, map it to music attributes, and recommend real songs that match the mood.
+SYSTEM_PROMPT = """You are a music mood analyst. Analyze the emotional content of user text and recommend real songs that match the mood.
 
 Given a user's message, you must:
-1. Identify the primary mood and an optional secondary mood from the text.
-2. Extract contextual cues — weather, time of day, activity, and memories — if mentioned or strongly implied.
-3. Map the mood to music attributes:
-   - energy: a float from 0.0 (very low energy) to 1.0 (very high energy)
-   - valence: a float from 0.0 (very negative/sad) to 1.0 (very positive/happy)
-   - tempo_range: an object with "min" and "max" BPM (integers)
-   - genres: a list of 2–4 relevant music genre strings
-   - keywords: a list of 3–6 descriptive mood keyword strings
+1. Identify the primary mood from the text.
+2. Map the mood to music attributes:
+   - energy: float from 0.0 (very low) to 1.0 (very high)
+   - valence: float from 0.0 (very negative/sad) to 1.0 (very positive/happy)
+   - keywords: list of 3–6 descriptive mood keywords
+3. Generate a creative playlist name and a short one-line description that captures the vibe.
 4. Suggest 20–25 real songs that match the mood. Each song must:
    - Be a real, well-known song that exists on Spotify
-   - Include the song title, artist name, and a brief reason (1 sentence) for why it fits the mood
+   - Include the song title, artist name, and a brief reason (1 sentence)
    - Be diverse across genres, eras, and artists — do not repeat artists more than twice
 
 Rules:
 - For vague or ambiguous input, use your best judgment and return reasonable defaults.
-- For truly nonsensical input (random characters, gibberish), return a neutral/default mood with general feel-good songs.
+- For nonsensical input (random characters, gibberish), return a neutral mood with general feel-good songs.
 - NEVER explain your reasoning. NEVER use markdown code fences.
 - Respond ONLY with a single valid JSON object matching this exact schema:
 
 {
   "mood": {
     "primary": "string",
-    "secondary": "string or null",
     "energy": 0.0,
     "valence": 0.0,
-    "tempo_range": { "min": 0, "max": 0 },
-    "genres": ["string"],
     "keywords": ["string"]
   },
-  "context": {
-    "weather": "string or null",
-    "time_of_day": "string or null",
-    "activity": "string or null",
-    "memories": "string or null"
-  },
+  "playlist_name": "string",
+  "playlist_description": "string",
   "songs": [
     { "title": "string", "artist": "string", "reason": "string" }
   ]
@@ -92,6 +83,50 @@ def _extract_json(text):
             pass
 
     return None
+
+
+def _validate_response(data):
+    """Validate and sanitize Bedrock mood response."""
+    mood = data.get("mood")
+    if not isinstance(mood, dict):
+        raise ValueError("Missing mood object")
+    if not isinstance(mood.get("primary"), str) or not mood["primary"]:
+        raise ValueError("Missing mood.primary")
+    if not isinstance(mood.get("keywords"), list) or not mood["keywords"]:
+        raise ValueError("Missing mood.keywords")
+
+    mood["energy"] = max(0.0, min(1.0, float(mood.get("energy", 0.5))))
+    mood["valence"] = max(0.0, min(1.0, float(mood.get("valence", 0.5))))
+
+    if not isinstance(data.get("playlist_name"), str) or not data["playlist_name"]:
+        raise ValueError("Missing playlist_name")
+    if not isinstance(data.get("playlist_description"), str) or not data["playlist_description"]:
+        raise ValueError("Missing playlist_description")
+
+    songs = data.get("songs")
+    if not isinstance(songs, list) or len(songs) == 0:
+        raise ValueError("Missing or empty songs list")
+    for i, song in enumerate(songs):
+        if not isinstance(song, dict):
+            raise ValueError(f"songs[{i}] is not an object")
+        for field in ("title", "artist", "reason"):
+            if not isinstance(song.get(field), str) or not song[field]:
+                raise ValueError(f"songs[{i}] missing {field}")
+
+    return {
+        "mood": {
+            "primary": mood["primary"],
+            "energy": mood["energy"],
+            "valence": mood["valence"],
+            "keywords": mood["keywords"],
+        },
+        "playlist_name": data["playlist_name"],
+        "playlist_description": data["playlist_description"],
+        "songs": [
+            {"title": s["title"], "artist": s["artist"], "reason": s["reason"]}
+            for s in songs
+        ],
+    }
 
 
 def analyze_mood_handler(event, context):
@@ -146,10 +181,15 @@ def analyze_mood_handler(event, context):
         if mood_analysis is None:
             return _build_response(
                 502,
-                {"error": "Failed to parse mood analysis from model response", "raw": raw_text},
+                {"error": "Failed to parse mood analysis from model response"},
             )
 
-        return _build_response(200, mood_analysis)
+        try:
+            validated = _validate_response(mood_analysis)
+        except (ValueError, TypeError, KeyError) as e:
+            return _build_response(502, {"error": f"Invalid model response: {str(e)}"})
+
+        return _build_response(200, validated)
 
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
