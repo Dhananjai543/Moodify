@@ -5,7 +5,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-sonnet-4-6")
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION", "ap-south-1")
 
 MAX_INPUT_CHARS = 500
