@@ -44,7 +44,14 @@ Rules:
   ]
 }"""
 
-bedrock_client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
+_bedrock_client = None
+
+
+def _get_bedrock_client():
+    global _bedrock_client
+    if _bedrock_client is None:
+        _bedrock_client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
+    return _bedrock_client
 
 
 def _build_response(status_code, body):
@@ -165,7 +172,7 @@ def analyze_mood_handler(event, context):
     }
 
     try:
-        response = bedrock_client.invoke_model(
+        response = _get_bedrock_client().invoke_model(
             modelId=BEDROCK_MODEL_ID,
             contentType="application/json",
             accept="application/json",
