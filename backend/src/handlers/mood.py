@@ -5,8 +5,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
-BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION", "ap-south-1")
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-pro-v1:0")
+BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION", "us-east-1")
 
 MAX_INPUT_CHARS = 500
 
@@ -160,15 +160,17 @@ def analyze_mood_handler(event, context):
         text = text[:MAX_INPUT_CHARS]
 
     payload = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 4096,
-        "system": SYSTEM_PROMPT,
+        "system": [{"text": SYSTEM_PROMPT}],
         "messages": [
             {
                 "role": "user",
-                "content": text,
+                "content": [{"text": text}],
             }
         ],
+        "inferenceConfig": {
+            "maxTokens": 4096,
+            "temperature": 0.7,
+        },
     }
 
     try:
@@ -181,8 +183,7 @@ def analyze_mood_handler(event, context):
 
         result = json.loads(response["body"].read())
 
-        # Extract the text content from Claude's response
-        raw_text = result["content"][0]["text"]
+        raw_text = result["output"]["message"]["content"][0]["text"]
 
         mood_analysis = _extract_json(raw_text)
         if mood_analysis is None:

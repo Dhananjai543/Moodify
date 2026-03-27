@@ -11,7 +11,7 @@ Globals:
       Variables:
         SPOTIFY_CLIENT_ID: ""
         SPOTIFY_REDIRECT_URI: "http://127.0.0.1:5173/callback"
-        BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-6"
+        BEDROCK_MODEL_ID: "amazon.nova-pro-v1:0"
         AWS_BEDROCK_REGION: "us-east-1"
 
 Resources:
@@ -83,9 +83,7 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              Resource:
-                - "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6"
-                - "arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-sonnet-4-6"
+              Resource: "arn:aws:bedrock:*::foundation-model/amazon.nova-pro-v1:0"
       Events:
         AnalyzeMoodApi:
           Type: HttpApi
