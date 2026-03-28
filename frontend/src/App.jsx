@@ -7,12 +7,15 @@ import MicButton from './components/MicButton';
 import TranscriptEditor from './components/TranscriptEditor';
 import GenerateButton from './components/GenerateButton';
 import MoodLoader from './components/MoodLoader';
+import ResultsPage from './components/ResultsPage';
 
 function App() {
   const [user, setUser] = useState(null);
   const [transcript, setTranscript] = useState('');
   const [inputMode, setInputMode] = useState('voice');
   const [step, setStep] = useState('record');
+  const [moodData, setMoodData] = useState(null);
+  const [playlistData, setPlaylistData] = useState(null);
 
   const handleReRecord = () => {
     setTranscript('');
@@ -33,7 +36,28 @@ function App() {
     setStep('record');
   };
 
+  const handleTryAgain = () => {
+    setTranscript('');
+    setInputMode('voice');
+    setStep('record');
+    setMoodData(null);
+    setPlaylistData(null);
+  };
+
   const renderStep = () => {
+    if (step === 'results' && moodData && playlistData) {
+      return (
+        <ResultsPage
+          mood={moodData.mood}
+          playlistName={moodData.playlist_name}
+          playlistDescription={moodData.playlist_description}
+          playlistUrl={playlistData.playlist_url}
+          tracks={playlistData.matched_tracks}
+          onTryAgain={handleTryAgain}
+        />
+      );
+    }
+
     if (step === 'generating') {
       return <MoodLoader />;
     }

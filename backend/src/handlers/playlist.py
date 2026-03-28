@@ -68,7 +68,17 @@ def _search_track(title, artist, access_token, refresh_token):
         return None, token
 
     tracks = resp.json().get("tracks", {}).get("items", [])
-    return (tracks[0].get("uri") if tracks else None), token
+    if not tracks:
+        return None, token
+
+    track = tracks[0]
+    album = track.get("album", {})
+    images = album.get("images", [])
+    return {
+        "uri": track.get("uri"),
+        "album_name": album.get("name", ""),
+        "album_image": images[0]["url"] if images else "",
+    }, token
 
 
 def _create_playlist(name, description, access_token, refresh_token):
@@ -100,9 +110,15 @@ def _search_songs(songs, access_token, refresh_token):
         if not title or not artist:
             skipped.append({"title": title, "artist": artist})
             continue
-        uri, token = _search_track(title, artist, token, refresh_token)
-        if uri:
-            matched.append({"title": title, "artist": artist, "uri": uri})
+        result, token = _search_track(title, artist, token, refresh_token)
+        if result:
+            matched.append({
+                "title": title,
+                "artist": artist,
+                "uri": result["uri"],
+                "album_name": result["album_name"],
+                "album_image": result["album_image"],
+            })
         else:
             skipped.append({"title": title, "artist": artist})
     return matched, skipped, token
