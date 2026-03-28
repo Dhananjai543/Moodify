@@ -5,6 +5,23 @@ import requests
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 
 
+class SpotifyRevoked(Exception):
+    pass
+
+
+def refresh_access_token(refresh_token):
+    """Refresh token via Spotify API"""
+    resp = requests.post(SPOTIFY_TOKEN_URL, data={
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": os.environ.get("SPOTIFY_CLIENT_ID", ""),
+    })
+    if resp.status_code != 200:
+        raise SpotifyRevoked()
+    data = resp.json()
+    return data.get("access_token"), data.get("refresh_token", refresh_token)
+
+
 def _build_response(status_code, body):
     return {
         "statusCode": status_code,

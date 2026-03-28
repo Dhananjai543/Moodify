@@ -1,9 +1,16 @@
 import json
+import time
 import requests
+
+from src.handlers.auth import refresh_access_token, SpotifyRevoked
+from src.handlers.mood import request_more_songs
 
 
 SPOTIFY_API_BASE = "https://api.spotify.com/v1"
 SPOTIFY_SEARCH_URL = f"{SPOTIFY_API_BASE}/search"
+
+MIN_MATCHED_TRACKS = 5
+MAX_RETRIES = 3
 
 
 def _build_response(status_code, body):
@@ -25,47 +32,82 @@ def _parse_body(event):
     return json.loads(body) if body else {}
 
 
-def _auth_headers(access_token):
-    return {"Authorization": f"Bearer {access_token}"}
+def _spotify_request(method, url, access_token, refresh_token, **kwargs):
+    """HTTP wrapper with token refresh and rate-limit retry."""
+    token = access_token
+    refreshed = False
+
+    for attempt in range(MAX_RETRIES):
+        kwargs["headers"] = {"Authorization": f"Bearer {token}"}
+        resp = requests.request(method, url, **kwargs)
+
+        if resp.status_code == 401 and refresh_token and not refreshed:
+            token, refresh_token = refresh_access_token(refresh_token)
+            refreshed = True
+            continue
+
+        if resp.status_code == 403:
+            raise SpotifyRevoked()
+
+        if resp.status_code == 429:
+            wait = min(int(resp.headers.get("Retry-After", 2 ** attempt)), 10)
+            time.sleep(wait)
+            continue
+
+        return resp, token
+
+    return resp, token
 
 
-# Search Spotify for a track
-def _search_track(title, artist, access_token):
-    query = f"track:{title} artist:{artist}"
-    params = {"q": query, "type": "track", "limit": 1}
-
-    resp = requests.get(SPOTIFY_SEARCH_URL, params=params, headers=_auth_headers(access_token))
+def _search_track(title, artist, access_token, refresh_token):
+    params = {"q": f"track:{title} artist:{artist}", "type": "track", "limit": 1}
+    resp, token = _spotify_request(
+        "GET", SPOTIFY_SEARCH_URL, access_token, refresh_token, params=params
+    )
     if resp.status_code != 200:
-        return None
+        return None, token
 
     tracks = resp.json().get("tracks", {}).get("items", [])
-    if not tracks:
-        return None
-
-    return tracks[0].get("uri")
+    return (tracks[0].get("uri") if tracks else None), token
 
 
-# Create playlist in current user's account
-def _create_playlist(name, description, access_token):
+def _create_playlist(name, description, access_token, refresh_token):
     url = f"{SPOTIFY_API_BASE}/me/playlists"
     payload = {"name": name, "description": description, "public": False}
-
-    resp = requests.post(url, json=payload, headers=_auth_headers(access_token))
+    resp, token = _spotify_request(
+        "POST", url, access_token, refresh_token, json=payload
+    )
     if resp.status_code not in (200, 201):
-        return {"_error": resp.status_code, "_detail": resp.text}
-    return resp.json()
+        return {"_error": resp.status_code, "_detail": resp.text}, token
+    return resp.json(), token
 
 
-# Add tracks to a playlist
-def _add_tracks_to_playlist(playlist_id, track_uris, access_token):
+def _add_tracks_to_playlist(playlist_id, track_uris, access_token, refresh_token):
     url = f"{SPOTIFY_API_BASE}/playlists/{playlist_id}/items"
-    payload = {"uris": track_uris}
+    resp, token = _spotify_request(
+        "POST", url, access_token, refresh_token, json={"uris": track_uris}
+    )
+    return resp.status_code in (200, 201), token
 
-    resp = requests.post(url, json=payload, headers=_auth_headers(access_token))
-    return resp.status_code in (200, 201)
+
+def _search_songs(songs, access_token, refresh_token):
+    matched = []
+    skipped = []
+    token = access_token
+    for song in songs:
+        title = song.get("title", "").strip()
+        artist = song.get("artist", "").strip()
+        if not title or not artist:
+            skipped.append({"title": title, "artist": artist})
+            continue
+        uri, token = _search_track(title, artist, token, refresh_token)
+        if uri:
+            matched.append({"title": title, "artist": artist, "uri": uri})
+        else:
+            skipped.append({"title": title, "artist": artist})
+    return matched, skipped, token
 
 
-# Search songs, create playlist, add tracks
 def create_playlist_handler(event, context):
     try:
         body = _parse_body(event)
@@ -75,6 +117,9 @@ def create_playlist_handler(event, context):
     access_token = body.get("access_token", "").strip()
     if not access_token:
         return _build_response(400, {"error": "access_token is required"})
+
+    refresh_token = body.get("refresh_token", "").strip() or None
+    mood = body.get("mood")
 
     songs = body.get("songs")
     if not isinstance(songs, list) or len(songs) == 0:
@@ -86,47 +131,62 @@ def create_playlist_handler(event, context):
 
     playlist_description = body.get("playlist_description", "").strip()
 
-    matched_tracks = []
-    skipped = []
+    try:
+        matched_tracks, skipped, access_token = _search_songs(
+            songs, access_token, refresh_token
+        )
 
-    for song in songs:
-        title = song.get("title", "").strip()
-        artist = song.get("artist", "").strip()
-        if not title or not artist:
-            skipped.append({"title": title, "artist": artist})
-            continue
+        if len(matched_tracks) < MIN_MATCHED_TRACKS and isinstance(mood, dict):
+            tried_titles = [s.get("title", "") for s in songs]
+            extra_songs = request_more_songs(mood, tried_titles)
+            if extra_songs:
+                extra_matched, extra_skipped, access_token = _search_songs(
+                    extra_songs, access_token, refresh_token
+                )
+                matched_tracks.extend(extra_matched)
+                skipped.extend(extra_skipped)
 
-        uri = _search_track(title, artist, access_token)
-        if uri:
-            matched_tracks.append({"title": title, "artist": artist, "uri": uri})
-        else:
-            skipped.append({"title": title, "artist": artist})
+        if not matched_tracks:
+            return _build_response(200, {
+                "error": "No songs matched on Spotify",
+                "matched_tracks": [],
+                "skipped": skipped,
+            })
 
-    if not matched_tracks:
-        return _build_response(200, {
-            "error": "No songs matched on Spotify",
-            "matched_tracks": [],
+        playlist, access_token = _create_playlist(
+            playlist_name, playlist_description, access_token, refresh_token
+        )
+        if "_error" in playlist:
+            return _build_response(502, {
+                "error": "Failed to create Spotify playlist",
+                "spotify_status": playlist["_error"],
+                "spotify_detail": playlist["_detail"],
+            })
+
+        playlist_id = playlist.get("id")
+        track_uris = [t["uri"] for t in matched_tracks]
+
+        added, access_token = _add_tracks_to_playlist(
+            playlist_id, track_uris, access_token, refresh_token
+        )
+        if not added:
+            return _build_response(502, {"error": "Failed to add tracks to playlist"})
+
+        result = {
+            "playlist_url": playlist.get("external_urls", {}).get("spotify", ""),
+            "playlist_id": playlist_id,
+            "cover_images": playlist.get("images", []),
+            "matched_tracks": matched_tracks,
             "skipped": skipped,
+        }
+
+        if access_token != body.get("access_token", "").strip():
+            result["new_access_token"] = access_token
+
+        return _build_response(200, result)
+
+    except SpotifyRevoked:
+        return _build_response(401, {
+            "error": "Spotify access revoked. Please log in again.",
+            "code": "REVOKED",
         })
-
-    playlist = _create_playlist(playlist_name, playlist_description, access_token)
-    if "_error" in playlist:
-        return _build_response(502, {
-            "error": "Failed to create Spotify playlist",
-            "spotify_status": playlist["_error"],
-            "spotify_detail": playlist["_detail"],
-        })
-
-    playlist_id = playlist.get("id")
-    track_uris = [t["uri"] for t in matched_tracks]
-
-    if not _add_tracks_to_playlist(playlist_id, track_uris, access_token):
-        return _build_response(502, {"error": "Failed to add tracks to playlist"})
-
-    return _build_response(200, {
-        "playlist_url": playlist.get("external_urls", {}).get("spotify", ""),
-        "playlist_id": playlist_id,
-        "cover_images": playlist.get("images", []),
-        "matched_tracks": matched_tracks,
-        "skipped": skipped,
-    })

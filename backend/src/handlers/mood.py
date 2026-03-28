@@ -136,6 +136,39 @@ def _validate_response(data):
     }
 
 
+def request_more_songs(mood, exclude_titles):
+    """Ask Bedrock for more songs"""
+    exclude_list = ", ".join(f'"{t}"' for t in exclude_titles)
+    prompt = (
+        f"The user's mood is: {mood.get('primary', 'neutral')} "
+        f"(energy={mood.get('energy', 0.5)}, valence={mood.get('valence', 0.5)}, "
+        f"keywords={mood.get('keywords', [])}).\n"
+        f"Suggest 10 more real songs that match this mood. "
+        f"Do NOT include these already-tried songs: [{exclude_list}].\n"
+        f"Respond ONLY with a JSON object: {{\"songs\": [{{\"title\": \"...\", \"artist\": \"...\", \"reason\": \"...\"}}]}}"
+    )
+    payload = {
+        "system": [{"text": "You are a music recommendation engine. Respond ONLY with valid JSON."}],
+        "messages": [{"role": "user", "content": [{"text": prompt}]}],
+        "inferenceConfig": {"maxTokens": 2048, "temperature": 0.7},
+    }
+    try:
+        resp = _get_bedrock_client().invoke_model(
+            modelId=BEDROCK_MODEL_ID,
+            contentType="application/json",
+            accept="application/json",
+            body=json.dumps(payload),
+        )
+        result = json.loads(resp["body"].read())
+        raw = result["output"]["message"]["content"][0]["text"]
+        parsed = _extract_json(raw)
+        if parsed and isinstance(parsed.get("songs"), list):
+            return parsed["songs"]
+    except Exception:
+        pass
+    return []
+
+
 def analyze_mood_handler(event, context):
     """Analyze mood from user text via Bedrock Claude Haiku."""
     try:
