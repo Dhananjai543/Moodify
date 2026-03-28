@@ -45,17 +45,9 @@ def _search_track(title, artist, access_token):
     return tracks[0].get("uri")
 
 
-# Get current user's Spotify ID
-def _get_user_id(access_token):
-    resp = requests.get(f"{SPOTIFY_API_BASE}/me", headers=_auth_headers(access_token))
-    if resp.status_code != 200:
-        return None
-    return resp.json().get("id")
-
-
-# Create playlist in user's account
-def _create_playlist(user_id, name, description, access_token):
-    url = f"{SPOTIFY_API_BASE}/users/{user_id}/playlists"
+# Create playlist in current user's account
+def _create_playlist(name, description, access_token):
+    url = f"{SPOTIFY_API_BASE}/me/playlists"
     payload = {"name": name, "description": description, "public": False}
 
     resp = requests.post(url, json=payload, headers=_auth_headers(access_token))
@@ -66,7 +58,7 @@ def _create_playlist(user_id, name, description, access_token):
 
 # Add tracks to a playlist
 def _add_tracks_to_playlist(playlist_id, track_uris, access_token):
-    url = f"{SPOTIFY_API_BASE}/playlists/{playlist_id}/tracks"
+    url = f"{SPOTIFY_API_BASE}/playlists/{playlist_id}/items"
     payload = {"uris": track_uris}
 
     resp = requests.post(url, json=payload, headers=_auth_headers(access_token))
@@ -117,11 +109,7 @@ def create_playlist_handler(event, context):
             "skipped": skipped,
         })
 
-    user_id = _get_user_id(access_token)
-    if not user_id:
-        return _build_response(401, {"error": "Failed to get Spotify user ID"})
-
-    playlist = _create_playlist(user_id, playlist_name, playlist_description, access_token)
+    playlist = _create_playlist(playlist_name, playlist_description, access_token)
     if "_error" in playlist:
         return _build_response(502, {
             "error": "Failed to create Spotify playlist",
