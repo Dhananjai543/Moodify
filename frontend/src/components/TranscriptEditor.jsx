@@ -1,4 +1,4 @@
-export default function TranscriptEditor({ transcript, onTranscriptChange, onReRecord, isTypingMode }) {
+export default function TranscriptEditor({ transcript, onTranscriptChange, onReRecord, onConfirm, isTypingMode }) {
   const wordCount = transcript.trim() ? transcript.trim().split(/\s+/).length : 0;
   const charCount = transcript.length;
 
@@ -34,6 +34,7 @@ export default function TranscriptEditor({ transcript, onTranscriptChange, onReR
 
         <button
           disabled={!transcript.trim()}
+          onClick={() => transcript.trim() && onConfirm?.(transcript.trim())}
           className="text-sm text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed py-2 px-6 rounded-full transition-colors cursor-pointer"
         >
           Confirm
