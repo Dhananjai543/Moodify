@@ -8,6 +8,9 @@ import TranscriptEditor from './components/TranscriptEditor';
 import GenerateButton from './components/GenerateButton';
 import MoodLoader from './components/MoodLoader';
 import ResultsPage from './components/ResultsPage';
+import ErrorToast from './components/ErrorToast';
+import { analyzeMood, createPlaylist } from './services/api';
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './auth/tokenStore';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -16,6 +19,7 @@ function App() {
   const [step, setStep] = useState('record');
   const [moodData, setMoodData] = useState(null);
   const [playlistData, setPlaylistData] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleReRecord = () => {
     setTranscript('');
@@ -28,8 +32,39 @@ function App() {
     setStep('confirmed');
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setStep('generating');
+    setError(null);
+
+    try {
+      const mood = await analyzeMood(transcript);
+      setMoodData(mood);
+
+      const playlist = await createPlaylist({
+        access_token: getAccessToken(),
+        refresh_token: getRefreshToken(),
+        songs: mood.songs,
+        playlist_name: mood.playlist_name,
+        playlist_description: mood.playlist_description,
+        mood: mood.mood,
+      });
+
+      if (playlist.new_access_token) {
+        setTokens({ access_token: playlist.new_access_token, refresh_token: getRefreshToken(), expires_in: 3600 });
+      }
+
+      setPlaylistData(playlist);
+      setStep('results');
+    } catch (err) {
+      if (err.code === 'REVOKED') {
+        clearTokens();
+        setUser(null);
+        setStep('record');
+        return;
+      }
+      setError(err.message || 'Something went wrong');
+      setStep('confirmed');
+    }
   };
 
   const handleEdit = () => {
@@ -42,6 +77,7 @@ function App() {
     setStep('record');
     setMoodData(null);
     setPlaylistData(null);
+    setError(null);
   };
 
   const renderStep = () => {
@@ -103,6 +139,13 @@ function App() {
               <main className="flex-1 flex items-center justify-center">
                 {renderStep()}
               </main>
+              {error && (
+                <ErrorToast
+                  message={error}
+                  onRetry={handleGenerate}
+                  onDismiss={() => setError(null)}
+                />
+              )}
             </div>
           ) : (
             <Login />
