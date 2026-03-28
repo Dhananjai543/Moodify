@@ -18,7 +18,6 @@ function App() {
   const [inputMode, setInputMode] = useState('voice');
   const [step, setStep] = useState('record');
   const [moodData, setMoodData] = useState(null);
-  const [playlistData, setPlaylistData] = useState(null);
   const [error, setError] = useState(null);
 
   const handleReRecord = () => {
@@ -39,21 +38,6 @@ function App() {
     try {
       const mood = await analyzeMood(transcript);
       setMoodData(mood);
-
-      const playlist = await createPlaylist({
-        access_token: getAccessToken(),
-        refresh_token: getRefreshToken(),
-        songs: mood.songs,
-        playlist_name: mood.playlist_name,
-        playlist_description: mood.playlist_description,
-        mood: mood.mood,
-      });
-
-      if (playlist.new_access_token) {
-        setTokens({ access_token: playlist.new_access_token, refresh_token: getRefreshToken(), expires_in: 3600 });
-      }
-
-      setPlaylistData(playlist);
       setStep('results');
     } catch (err) {
       if (err.code === 'REVOKED') {
@@ -67,6 +51,23 @@ function App() {
     }
   };
 
+  const handleAddToSpotify = async () => {
+    const playlist = await createPlaylist({
+      access_token: getAccessToken(),
+      refresh_token: getRefreshToken(),
+      songs: moodData.songs,
+      playlist_name: moodData.playlist_name,
+      playlist_description: moodData.playlist_description,
+      mood: moodData.mood,
+    });
+
+    if (playlist.new_access_token) {
+      setTokens({ access_token: playlist.new_access_token, refresh_token: getRefreshToken(), expires_in: 3600 });
+    }
+
+    return playlist;
+  };
+
   const handleEdit = () => {
     setStep('record');
   };
@@ -76,19 +77,18 @@ function App() {
     setInputMode('voice');
     setStep('record');
     setMoodData(null);
-    setPlaylistData(null);
     setError(null);
   };
 
   const renderStep = () => {
-    if (step === 'results' && moodData && playlistData) {
+    if (step === 'results' && moodData) {
       return (
         <ResultsPage
           mood={moodData.mood}
           playlistName={moodData.playlist_name}
           playlistDescription={moodData.playlist_description}
-          playlistUrl={playlistData.playlist_url}
-          tracks={playlistData.matched_tracks}
+          songs={moodData.songs}
+          onAddToSpotify={handleAddToSpotify}
           onTryAgain={handleTryAgain}
         />
       );
