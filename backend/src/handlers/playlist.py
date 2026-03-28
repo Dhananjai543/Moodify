@@ -59,26 +59,75 @@ def _spotify_request(method, url, access_token, refresh_token, **kwargs):
     return resp, token
 
 
-def _search_track(title, artist, access_token, refresh_token):
-    params = {"q": f"track:{title} artist:{artist}", "type": "track", "limit": 1}
-    resp, token = _spotify_request(
-        "GET", SPOTIFY_SEARCH_URL, access_token, refresh_token, params=params
-    )
-    if resp.status_code != 200:
-        return None, token
+MIN_MATCH_SCORE = 2
 
-    tracks = resp.json().get("tracks", {}).get("items", [])
-    if not tracks:
-        return None, token
 
-    track = tracks[0]
+def _score_track(title, artist, track):
+    """Score a Spotify track against the AI-suggested title/artist."""
+    score = 0
+    t_lower = title.lower()
+    sp_name = track.get("name", "").lower()
+
+    if t_lower in sp_name or sp_name in t_lower:
+        score += 3
+
+    a_lower = artist.lower()
+    sp_artists = [a.get("name", "").lower() for a in track.get("artists", [])]
+    if any(a_lower in sa or sa in a_lower for sa in sp_artists):
+        score += 2
+
+    score += track.get("popularity", 0) / 20
+    return score
+
+
+def _pick_best(title, artist, items):
+    """Return highest-scoring track above threshold, or None."""
+    best, best_score = None, -1
+    for t in items:
+        s = _score_track(title, artist, t)
+        if s > best_score:
+            best, best_score = t, s
+    if best_score >= MIN_MATCH_SCORE:
+        return best
+    return None
+
+
+def _track_result(track):
     album = track.get("album", {})
     images = album.get("images", [])
     return {
         "uri": track.get("uri"),
         "album_name": album.get("name", ""),
         "album_image": images[0]["url"] if images else "",
-    }, token
+    }
+
+
+def _search_track(title, artist, access_token, refresh_token):
+    # Pass 1: strict field search
+    params = {"q": f"track:{title} artist:{artist}", "type": "track", "limit": 5}
+    resp, token = _spotify_request(
+        "GET", SPOTIFY_SEARCH_URL, access_token, refresh_token, params=params
+    )
+    if resp.status_code == 200:
+        items = resp.json().get("tracks", {}).get("items", [])
+        best = _pick_best(title, artist, items)
+        if best:
+            return _track_result(best), token
+
+    # Pass 2: broad keyword search
+    params = {"q": f"{title} {artist}", "type": "track", "limit": 10}
+    resp, token = _spotify_request(
+        "GET", SPOTIFY_SEARCH_URL, access_token, refresh_token, params=params
+    )
+    if resp.status_code != 200:
+        return None, token
+
+    items = resp.json().get("tracks", {}).get("items", [])
+    best = _pick_best(title, artist, items)
+    if best:
+        return _track_result(best), token
+
+    return None, token
 
 
 def _create_playlist(name, description, access_token, refresh_token):
