@@ -60,7 +60,7 @@ def _create_playlist(user_id, name, description, access_token):
 
     resp = requests.post(url, json=payload, headers=_auth_headers(access_token))
     if resp.status_code not in (200, 201):
-        return None
+        return {"_error": resp.status_code, "_detail": resp.text}
     return resp.json()
 
 
@@ -122,8 +122,12 @@ def create_playlist_handler(event, context):
         return _build_response(401, {"error": "Failed to get Spotify user ID"})
 
     playlist = _create_playlist(user_id, playlist_name, playlist_description, access_token)
-    if not playlist:
-        return _build_response(502, {"error": "Failed to create Spotify playlist"})
+    if "_error" in playlist:
+        return _build_response(502, {
+            "error": "Failed to create Spotify playlist",
+            "spotify_status": playlist["_error"],
+            "spotify_detail": playlist["_detail"],
+        })
 
     playlist_id = playlist.get("id")
     track_uris = [t["uri"] for t in matched_tracks]
