@@ -72,6 +72,20 @@ Resources:
             Path: /auth/refresh
             Method: POST
 
+  CreatePlaylistFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/playlist.create_playlist_handler
+      CodeUri: .
+      Description: Search Spotify and collect track URIs
+      Events:
+        CreatePlaylistApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref MoodifyApi
+            Path: /create-playlist
+            Method: POST
+
   AnalyzeMoodFunction:
     Type: AWS::Serverless::Function
     Properties:
