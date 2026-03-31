@@ -1,16 +1,310 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;0,6..96,700;0,6..96,800;0,6..96,900;1,6..96,400;1,6..96,500;1,6..96,600;1,6..96,700&family=Outfit:wght@300;400;500;600;700&display=swap');
 
+@theme {
+  --font-headline: 'Bodoni Moda', serif;
+  --font-body: 'Outfit', sans-serif;
+  --color-surface: #07100b;
+  --color-surface-container: #111c16;
+  --color-surface-container-high: #16221c;
+  --color-surface-container-highest: #1b2921;
+  --color-surface-variant: #1b2921;
+  --color-emerald-glow: #00FF87;
+  --color-emerald-dim: #00ed7d;
+  --color-emerald-deep: #006c48;
+  --color-forest: #0A4D2E;
+  --color-on-surface: #f1fcf3;
+  --color-on-surface-variant: #a3aea6;
+  --color-outline-variant: #404a44;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background: #030A06;
+  color: var(--color-on-surface);
+  overflow-x: hidden;
+}
+
+/* ──── Mic Pulse ──── */
 @keyframes mic-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.5); opacity: 0; }
 }
 
+/* ──── Mood Ring ──── */
 @keyframes mood-ring {
   0%, 100% { transform: scale(1); opacity: 0.3; }
   50% { transform: scale(1.15); opacity: 1; }
 }
 
+/* ──── Mood Word Fade ──── */
 @keyframes mood-word {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+/* ──── Hero Glow Pulse ──── */
+@keyframes glow-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 20px rgba(0, 255, 135, 0.4),
+      0 0 40px rgba(0, 255, 135, 0.2),
+      0 0 80px rgba(0, 255, 135, 0.1);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(0, 255, 135, 0.6),
+      0 0 60px rgba(0, 255, 135, 0.3),
+      0 0 120px rgba(0, 255, 135, 0.15);
+  }
+}
+
+/* ──── Floating Animation ──── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+/* ──── Glass Shimmer ──── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ──── Fade In Up ──── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ──── Scale In ──── */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ──── Spin Slow ──── */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ──── Aurora Drift ──── */
+@keyframes aurora-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.05);
+    opacity: 0.8;
+  }
+  66% {
+    transform: translate(-20px, 15px) scale(0.95);
+    opacity: 0.6;
+  }
+}
+
+/* ──── Gradient BG Shift ──── */
+@keyframes bg-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ──── Button Glow ──── */
+@keyframes btn-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(0, 255, 135, 0.2), 0 0 30px rgba(0, 255, 135, 0.1); }
+  50% { box-shadow: 0 0 25px rgba(0, 255, 135, 0.4), 0 0 50px rgba(0, 255, 135, 0.15); }
+}
+
+/* ──── Ring Expand ──── */
+@keyframes ring-expand {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ──── Glass Card (standard) ──── */
+.glass-card {
+  background: rgba(27, 41, 33, 0.3);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(64, 74, 68, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(27, 41, 33, 0.5);
+  border-color: rgba(0, 255, 135, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 255, 135, 0.08);
+}
+
+/* ──── Liquid Glass Card ──── */
+.liquid-glass {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(0, 255, 135, 0.04) 0%,
+      rgba(27, 41, 33, 0.15) 30%,
+      rgba(0, 237, 125, 0.03) 60%,
+      rgba(27, 41, 33, 0.12) 100%
+    );
+  backdrop-filter: blur(40px) saturate(1.5);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  border: 1px solid rgba(0, 255, 135, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    transparent 0deg,
+    rgba(0, 255, 135, 0.03) 60deg,
+    transparent 120deg,
+    rgba(164, 255, 185, 0.02) 200deg,
+    transparent 260deg,
+    rgba(0, 237, 125, 0.025) 320deg,
+    transparent 360deg
+  );
+  animation: liquid-rotate 8s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.liquid-glass::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.03),
+    transparent
+  );
+  animation: liquid-shimmer 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.liquid-glass:hover {
+  border-color: rgba(0, 255, 135, 0.2);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(0, 255, 135, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.liquid-icon-bg {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(0, 255, 135, 0.1) 0%,
+      rgba(0, 108, 72, 0.08) 100%
+    );
+  box-shadow: 0 4px 16px rgba(0, 255, 135, 0.08);
+}
+
+@keyframes liquid-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes liquid-shimmer {
+  0%, 100% { left: -100%; opacity: 0; }
+  50% { left: 100%; opacity: 1; }
+}
+
+/* ──── Glass Header ──── */
+.glass-header {
+  background: rgba(17, 28, 22, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(64, 74, 68, 0.15);
+}
+
+/* ──── CTA Button ──── */
+.btn-cta {
+  background: linear-gradient(135deg, #a4ffb9 0%, #00fd86 50%, #00FF87 100%);
+  color: #004620;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  animation: btn-glow 3s ease-in-out infinite;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-cta:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 25px rgba(0, 255, 135, 0.5),
+    0 0 50px rgba(0, 255, 135, 0.2),
+    0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.btn-cta:active {
+  transform: perspective(800px) rotateX(-3deg) rotateY(2deg) scale(0.97);
+}
+
+/* ──── Ghost Button ──── */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(64, 74, 68, 0.4);
+  color: var(--color-on-surface);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-ghost:hover {
+  border-color: rgba(0, 255, 135, 0.4);
+  color: #00FF87;
+  box-shadow: 0 0 15px rgba(0, 255, 135, 0.08);
+}
+
+/* ──── Text Glow ──── */
+.text-glow {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+/* ──── Scrollbar ──── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #030A06;
+}
+::-webkit-scrollbar-thumb {
+  background: #1b2921;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #006c48;
 }
