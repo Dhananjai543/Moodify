@@ -9,6 +9,7 @@ import GenerateButton from './components/GenerateButton';
 import MoodLoader from './components/MoodLoader';
 import ResultsPage from './components/ResultsPage';
 import ErrorToast from './components/ErrorToast';
+import AnimatedBackground from './components/AnimatedBackground';
 import { analyzeMood, createPlaylist } from './services/api';
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './auth/tokenStore';
 
@@ -90,6 +91,7 @@ function App() {
           songs={moodData.songs}
           onAddToSpotify={handleAddToSpotify}
           onTryAgain={handleTryAgain}
+          accessToken={getAccessToken()}
         />
       );
     }
@@ -134,11 +136,31 @@ function App() {
         path="/"
         element={
           user ? (
-            <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-              <UserProfile user={user} onLogout={() => setUser(null)} />
-              <main className="flex-1 flex items-center justify-center">
-                {renderStep()}
-              </main>
+            <div className="min-h-screen text-on-surface flex flex-col relative overflow-hidden">
+              <AnimatedBackground />
+              {/* Aurora overlays */}
+              <div className="fixed inset-0 z-[1] pointer-events-none overflow-hidden">
+                <div
+                  className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(0,255,135,0.05) 0%, transparent 70%)',
+                    animation: 'aurora-drift 12s ease-in-out infinite',
+                  }}
+                />
+                <div
+                  className="absolute bottom-[-30%] right-[-15%] w-[50vw] h-[50vw] rounded-full"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(0,237,125,0.04) 0%, transparent 70%)',
+                    animation: 'aurora-drift 15s ease-in-out infinite 3s',
+                  }}
+                />
+              </div>
+              <div className="relative z-10 flex flex-col min-h-screen">
+                <UserProfile user={user} onLogout={() => setUser(null)} />
+                <main className="flex-1 flex items-center justify-center">
+                  {renderStep()}
+                </main>
+              </div>
               {error && (
                 <ErrorToast
                   message={error}

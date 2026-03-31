@@ -9,24 +9,27 @@ export default function UserProfile({ user, onLogout }) {
   };
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 bg-gray-900/80 border-b border-gray-800">
+    <header className="glass-header flex items-center justify-between px-6 py-3">
       <div className="flex items-center gap-3">
-        {profileImage ? (
-          <img
-            src={profileImage}
-            alt={user.display_name}
-            className="w-8 h-8 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold">
-            {user.display_name?.charAt(0)?.toUpperCase()}
-          </div>
-        )}
-        <span className="text-sm font-medium">{user.display_name}</span>
+        <div className="relative">
+          {profileImage ? (
+            <img
+              src={profileImage}
+              alt={user.display_name}
+              className="w-9 h-9 rounded-full object-cover ring-2 ring-emerald-glow/20"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold font-headline bg-emerald-deep/30 text-emerald-glow ring-2 ring-emerald-glow/20">
+              {user.display_name?.charAt(0)?.toUpperCase()}
+            </div>
+          )}
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-glow border-2 border-surface" />
+        </div>
+        <span className="text-sm font-medium font-body text-on-surface">{user.display_name}</span>
       </div>
       <button
         onClick={handleLogout}
-        className="text-xs text-gray-400 hover:text-white border border-gray-600 hover:border-white py-1.5 px-4 rounded-full transition-colors cursor-pointer"
+        className="btn-ghost text-xs py-1.5 px-5 rounded-full cursor-pointer font-body"
       >
         Logout
       </button>

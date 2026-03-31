@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { retrieveCodeVerifier, clearCodeVerifier } from '../auth/pkce';
 import { exchangeToken, fetchUserProfile } from '../services/spotify';
 import { setTokens } from '../auth/tokenStore';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 export default function Callback({ onLoginSuccess }) {
   const [error, setError] = useState(null);
@@ -54,16 +55,32 @@ export default function Callback({ onLoginSuccess }) {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-950 text-white">
-        <p className="text-red-400 text-lg mb-4">{error}</p>
-        <a href="/" className="text-[#1DB954] hover:underline">Back to login</a>
+      <div className="min-h-screen flex flex-col items-center justify-center text-on-surface relative overflow-hidden">
+        <AnimatedBackground />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <p className="text-red-400 text-lg font-body">{error}</p>
+          <a href="/" className="text-emerald-glow hover:text-emerald-dim transition-colors font-body">Back to login</a>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
-      <p className="text-gray-400 text-lg">Logging you in...</p>
+    <div className="min-h-screen flex items-center justify-center text-on-surface relative overflow-hidden">
+      <AnimatedBackground />
+      <div className="relative z-10 flex flex-col items-center gap-6">
+        <div className="relative w-16 h-16">
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              border: '3px solid transparent',
+              borderTopColor: '#00FF87',
+              animation: 'spin-slow 1s linear infinite',
+            }}
+          />
+        </div>
+        <p className="text-on-surface-variant text-lg font-body">Logging you in...</p>
+      </div>
     </div>
   );
 }

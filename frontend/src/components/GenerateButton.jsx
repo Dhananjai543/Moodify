@@ -1,22 +1,24 @@
 export default function GenerateButton({ transcript, onGenerate, onEdit }) {
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-lg px-4">
-      <h2 className="text-lg font-semibold text-white">Your mood</h2>
+    <div className="flex flex-col items-center gap-6 w-full max-w-lg px-4 animate-[fade-in-up_0.6s_ease-out_forwards]">
+      <h2 className="text-lg font-semibold text-on-surface font-headline">Your mood</h2>
 
-      <div className="w-full rounded-lg bg-gray-900 border border-gray-700 p-4 text-sm text-gray-300 leading-relaxed">
+      <div
+        className="glass-card w-full rounded-xl p-5 text-sm text-on-surface/80 leading-relaxed font-body"
+      >
         {transcript}
       </div>
 
       <div className="flex gap-4">
         <button
           onClick={onEdit}
-          className="text-sm text-gray-400 hover:text-white border border-gray-600 hover:border-white py-2 px-5 rounded-full transition-colors cursor-pointer"
+          className="btn-ghost text-sm py-2.5 px-6 rounded-full cursor-pointer font-body"
         >
           Edit
         </button>
         <button
           onClick={onGenerate}
-          className="flex items-center gap-2 text-sm text-black font-semibold bg-[#1DB954] hover:bg-[#1ed760] py-2.5 px-7 rounded-full transition-colors cursor-pointer"
+          className="btn-cta flex items-center gap-2 text-sm py-3 px-8 rounded-full cursor-pointer font-body"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
             <path d="M9 19V6l12-2v13" />
