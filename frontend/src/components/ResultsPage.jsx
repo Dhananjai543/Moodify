@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 const FUN_LINES = [
   "Your ears are about to thank you!",
@@ -63,6 +64,7 @@ export default function ResultsPage({ mood, playlistName, playlistDescription, s
         line: FUN_LINES[Math.floor(Math.random() * FUN_LINES.length)],
       };
       setSuccess(data);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setShowPopup(true);
     } catch (err) {
       setAddError(err.message || 'Failed to add playlist');
@@ -174,8 +176,8 @@ export default function ResultsPage({ mood, playlistName, playlistDescription, s
         <p className="text-sm text-red-400 font-body">{addError}</p>
       )}
 
-      {/* Success Popup */}
-      {showPopup && success && (
+      {/* Success Popup — rendered via portal so fixed positioning works regardless of parent transforms */}
+      {showPopup && success && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(3, 10, 6, 0.8)', backdropFilter: 'blur(8px)' }} onClick={() => setShowPopup(false)}>
           <div
             className="glass-card rounded-3xl p-10 max-w-sm text-center animate-[scale-in_0.4s_ease-out_forwards]"
@@ -209,7 +211,8 @@ export default function ResultsPage({ mood, playlistName, playlistDescription, s
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
