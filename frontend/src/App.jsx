@@ -91,6 +91,7 @@ function App() {
           songs={moodData.songs}
           onAddToSpotify={handleAddToSpotify}
           onTryAgain={handleTryAgain}
+          accessToken={getAccessToken()}
         />
       );
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const FUN_LINES = [
   "Your ears are about to thank you!",
@@ -8,11 +8,50 @@ const FUN_LINES = [
   "Your mood just got a soundtrack!",
 ];
 
-export default function ResultsPage({ mood, playlistName, playlistDescription, songs, onAddToSpotify, onTryAgain }) {
+async function fetchAlbumArt(title, artist, accessToken) {
+  const q = encodeURIComponent(`track:${title} artist:${artist}`);
+  const res = await fetch(
+    `https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const images = data?.tracks?.items?.[0]?.album?.images;
+  return images?.find((img) => img.width <= 300)?.url || images?.[0]?.url || null;
+}
+
+export default function ResultsPage({ mood, playlistName, playlistDescription, songs, onAddToSpotify, onTryAgain, accessToken }) {
   const [adding, setAdding] = useState(false);
   const [success, setSuccess] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [addError, setAddError] = useState(null);
+  const [albumArts, setAlbumArts] = useState({});
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!songs?.length || !accessToken || fetchedRef.current) return;
+    fetchedRef.current = true;
+
+    const BATCH_SIZE = 5;
+
+    async function loadArts() {
+      for (let i = 0; i < songs.length; i += BATCH_SIZE) {
+        const batch = songs.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+          batch.map((s, j) =>
+            fetchAlbumArt(s.title, s.artist, accessToken).then((url) => [i + j, url]),
+          ),
+        );
+        setAlbumArts((prev) => {
+          const next = { ...prev };
+          results.forEach(([idx, url]) => { if (url) next[idx] = url; });
+          return next;
+        });
+      }
+    }
+
+    loadArts();
+  }, [songs, accessToken]);
 
   const handleAdd = async () => {
     setAdding(true);
@@ -70,13 +109,24 @@ export default function ResultsPage({ mood, playlistName, playlistDescription, s
         {songs?.map((song, i) => (
           <li
             key={i}
-            className="flex items-center gap-4 py-3.5 px-5 transition-all duration-200 hover:bg-[rgba(0,255,135,0.03)]"
+            className="flex items-center gap-4 py-3 px-5 transition-all duration-200 hover:bg-[rgba(0,255,135,0.03)]"
             style={{
               borderBottom: i < songs.length - 1 ? '1px solid rgba(64, 74, 68, 0.1)' : 'none',
               animationDelay: `${i * 0.05}s`,
             }}
           >
-            <div className="w-8 text-center text-xs text-on-surface-variant/40 flex-shrink-0 font-body tabular-nums">{i + 1}</div>
+            <div className="w-6 text-center text-xs text-on-surface-variant/40 flex-shrink-0 font-body tabular-nums">{i + 1}</div>
+            <div className="w-11 h-11 rounded-lg flex-shrink-0 overflow-hidden bg-surface-container-high">
+              {albumArts[i] ? (
+                <img src={albumArts[i]} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-on-surface-variant/30" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                  </svg>
+                </div>
+              )}
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-on-surface truncate font-body">{song.title}</p>
               <p className="text-xs text-on-surface-variant/60 truncate font-body">{song.artist}</p>
