@@ -1,0 +1,9 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "moodify-backend"
+resolve_s3 = true
+s3_prefix = "moodify-backend"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "SpotifyClientId=\"YOUR_CLIENT_ID_HERE\" SpotifyClientSecret=\"YOUR_CLIENT_SECRET_HERE\""

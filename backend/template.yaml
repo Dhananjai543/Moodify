@@ -2,17 +2,32 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Moodify - Voice-to-Playlist Generator Backend
 
+Parameters:
+  SpotifyClientId:
+    Type: String
+    Description: Spotify OAuth Client ID
+  SpotifyClientSecret:
+    Type: String
+    Description: Spotify OAuth Client Secret
+    NoEcho: true
+
 Globals:
   Function:
     Timeout: 90
     MemorySize: 256
     Runtime: python3.12
+    # Optimized: Graviton2 (arm64) offers ~20% better price-performance for Python
+    Architectures:
+      - arm64
     Environment:
       Variables:
-        SPOTIFY_CLIENT_ID: ""
+        SPOTIFY_CLIENT_ID: !Ref SpotifyClientId
+        SPOTIFY_CLIENT_SECRET: !Ref SpotifyClientSecret
         SPOTIFY_REDIRECT_URI: "http://127.0.0.1:5173/callback"
         BEDROCK_MODEL_ID: "amazon.nova-pro-v1:0"
         AWS_BEDROCK_REGION: "us-east-1"
+        # Optimized: enables TCP keep-alive on all boto3 clients globally
+        AWS_SDK_TCP_KEEPALIVE: "true"
 
 Resources:
   MoodifyApi:
@@ -78,6 +93,8 @@ Resources:
       Handler: src/handlers/playlist.create_playlist_handler
       CodeUri: .
       Description: Search Spotify and collect track URIs
+      # Optimized: more CPU/network bandwidth for parallel Spotify API calls
+      MemorySize: 512
       Events:
         CreatePlaylistApi:
           Type: HttpApi
@@ -92,6 +109,8 @@ Resources:
       Handler: src/handlers/mood.analyze_mood_handler
       CodeUri: .
       Description: Analyze mood via Amazon Bedrock
+      # Optimized: more CPU for Bedrock response parsing and JSON processing
+      MemorySize: 512
       Policies:
         - Statement:
             - Effect: Allow

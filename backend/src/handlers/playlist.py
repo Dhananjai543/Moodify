@@ -1,16 +1,26 @@
+import base64
 import json
+import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
+
 import requests
 
 from src.handlers.auth import refresh_access_token, SpotifyRevoked
 from src.handlers.mood import request_more_songs
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 SPOTIFY_API_BASE = "https://api.spotify.com/v1"
 SPOTIFY_SEARCH_URL = f"{SPOTIFY_API_BASE}/search"
 
 MIN_MATCHED_TRACKS = 5
 MAX_RETRIES = 3
+
+# Optimized: module-level Session reuses TCP connections across Spotify API
+# calls within an invocation and across warm Lambda invocations
+_http_session = requests.Session()
 
 
 def _build_response(status_code, body):
@@ -27,7 +37,6 @@ def _build_response(status_code, body):
 def _parse_body(event):
     body = event.get("body", "")
     if event.get("isBase64Encoded"):
-        import base64
         body = base64.b64decode(body).decode("utf-8")
     return json.loads(body) if body else {}
 
@@ -36,10 +45,12 @@ def _spotify_request(method, url, access_token, refresh_token, **kwargs):
     """HTTP wrapper with token refresh and rate-limit retry."""
     token = access_token
     refreshed = False
+    # Optimized: explicit timeout prevents hanging on unresponsive Spotify calls
+    kwargs.setdefault("timeout", (5, 10))
 
     for attempt in range(MAX_RETRIES):
         kwargs["headers"] = {"Authorization": f"Bearer {token}"}
-        resp = requests.request(method, url, **kwargs)
+        resp = _http_session.request(method, url, **kwargs)
 
         if resp.status_code == 401 and refresh_token and not refreshed:
             token, refresh_token = refresh_access_token(refresh_token)
@@ -149,28 +160,38 @@ def _add_tracks_to_playlist(playlist_id, track_uris, access_token, refresh_token
     return resp.status_code in (200, 201), token
 
 
+# Optimized: parallel track searches instead of sequential loop — reduces
+# 20-50 serial HTTP round-trips to ~2-5 parallel batches
 def _search_songs(songs, access_token, refresh_token):
     matched = []
     skipped = []
-    token = access_token
-    for song in songs:
+
+    def _search_one(song):
         title = song.get("title", "").strip()
         artist = song.get("artist", "").strip()
         if not title or not artist:
-            skipped.append({"title": title, "artist": artist})
-            continue
-        result, token = _search_track(title, artist, token, refresh_token)
+            return None, {"title": title, "artist": artist}
+        result, _ = _search_track(title, artist, access_token, refresh_token)
         if result:
-            matched.append({
+            return {
                 "title": title,
                 "artist": artist,
                 "uri": result["uri"],
                 "album_name": result["album_name"],
                 "album_image": result["album_image"],
-            })
-        else:
-            skipped.append({"title": title, "artist": artist})
-    return matched, skipped, token
+            }, None
+        return None, {"title": title, "artist": artist}
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_search_one, song) for song in songs]
+        for future in futures:
+            match, skip = future.result()
+            if match:
+                matched.append(match)
+            elif skip:
+                skipped.append(skip)
+
+    return matched, skipped, access_token
 
 
 def create_playlist_handler(event, context):
@@ -222,6 +243,7 @@ def create_playlist_handler(event, context):
             playlist_name, playlist_description, access_token, refresh_token
         )
         if "_error" in playlist:
+            logger.error("Spotify playlist creation failed: %s %s", playlist["_error"], playlist["_detail"])
             return _build_response(502, {
                 "error": "Failed to create Spotify playlist",
                 "spotify_status": playlist["_error"],
@@ -235,6 +257,7 @@ def create_playlist_handler(event, context):
             playlist_id, track_uris, access_token, refresh_token
         )
         if not added:
+            logger.error("Failed to add tracks to playlist %s", playlist_id)
             return _build_response(502, {"error": "Failed to add tracks to playlist"})
 
         result = {
@@ -251,6 +274,7 @@ def create_playlist_handler(event, context):
         return _build_response(200, result)
 
     except SpotifyRevoked:
+        logger.warning("Spotify access revoked for user")
         return _build_response(401, {
             "error": "Spotify access revoked. Please log in again.",
             "code": "REVOKED",

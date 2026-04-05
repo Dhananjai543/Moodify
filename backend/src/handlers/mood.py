@@ -1,12 +1,22 @@
+import base64
 import json
+import logging
 import os
 import re
+
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-pro-v1:0")
 BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION", "us-east-1")
+
+# Optimized: TCP keep-alive reuses connections across warm invocations;
+# explicit timeouts prevent hanging on unresponsive Bedrock calls
+_boto_config = Config(tcp_keepalive=True, connect_timeout=5, read_timeout=60)
 
 MAX_INPUT_CHARS = 500
 
@@ -50,7 +60,9 @@ _bedrock_client = None
 def _get_bedrock_client():
     global _bedrock_client
     if _bedrock_client is None:
-        _bedrock_client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
+        _bedrock_client = boto3.client(
+            "bedrock-runtime", region_name=BEDROCK_REGION, config=_boto_config
+        )
     return _bedrock_client
 
 
@@ -68,7 +80,6 @@ def _build_response(status_code, body):
 def _parse_body(event):
     body = event.get("body", "")
     if event.get("isBase64Encoded"):
-        import base64
         body = base64.b64decode(body).decode("utf-8")
     return json.loads(body) if body else {}
 
@@ -165,7 +176,7 @@ def request_more_songs(mood, exclude_titles):
         if parsed and isinstance(parsed.get("songs"), list):
             return parsed["songs"]
     except Exception:
-        pass
+        logger.warning("request_more_songs: Bedrock fallback call failed", exc_info=True)
     return []
 
 
@@ -235,6 +246,8 @@ def analyze_mood_handler(event, context):
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         error_msg = e.response["Error"]["Message"]
+        logger.error("Bedrock ClientError: %s - %s", error_code, error_msg)
         return _build_response(502, {"error": f"Bedrock error: {error_code} - {error_msg}"})
     except Exception as e:
+        logger.error("analyze_mood_handler unexpected error", exc_info=True)
         return _build_response(500, {"error": f"Internal error: {str(e)}"})
